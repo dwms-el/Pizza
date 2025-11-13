@@ -1,0 +1,613 @@
+import React, { useState, useEffect } from 'react';
+
+import { PlusCircle, Trash2, Download, TrendingUp, DollarSign, Calendar, Pizza } from 'lucide-react';
+
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+
+
+
+const App = () => {
+
+  const [sales, setSales] = useState([]);
+
+  const [formData, setFormData] = useState({
+
+    date: new Date().toISOString().split('T')[0],
+
+    quantity: '',
+
+    expenses: '',
+
+    paymentMethod: 'Dinheiro'
+
+  });
+
+
+
+  const PIZZA_PRICE = 25.00;
+
+  const DAILY_GOAL = 3;
+
+
+
+  // Carregar dados salvos localmente ao iniciar
+
+  useEffect(() => {
+
+    const saved = localStorage.getItem('pizzaSales');
+
+    if (saved) {
+
+      setSales(JSON.parse(saved));
+
+    }
+
+  }, []);
+
+
+
+  // Salvar dados sempre que houver mudança
+
+  useEffect(() => {
+
+    localStorage.setItem('pizzaSales', JSON.stringify(sales));
+
+  }, [sales]);
+
+
+
+  const handleInputChange = (e) => {
+
+    const { name, value } = e.target;
+
+    setFormData(prev => ({ ...prev, [name]: value }));
+
+  };
+
+
+
+  const calculateMonth = (dateString) => {
+
+    const date = new Date(dateString);
+
+    return date.toLocaleString('pt-BR', { month: 'long' });
+
+  };
+
+
+
+  const handleSubmit = (e) => {
+
+    e.preventDefault();
+
+   
+
+    if (!formData.quantity || !formData.date) return;
+
+
+
+    const quantity = parseInt(formData.quantity);
+
+    const expenses = parseFloat(formData.expenses) || 0;
+
+    const revenue = quantity * PIZZA_PRICE;
+
+    const profit = revenue - expenses;
+
+    const month = calculateMonth(formData.date);
+
+
+
+    const newSale = {
+
+      id: Date.now(),
+
+      date: formData.date,
+
+      month: month,
+
+      quantity: quantity,
+
+      revenue: revenue,
+
+      expenses: expenses,
+
+      profit: profit,
+
+      paymentMethod: formData.paymentMethod,
+
+      goalMet: quantity >= DAILY_GOAL
+
+    };
+
+
+
+    // Adiciona e ordena por data (mais recente primeiro)
+
+    const updatedSales = [newSale, ...sales].sort((a, b) => new Date(b.date) - new Date(a.date));
+
+    setSales(updatedSales);
+
+
+
+    // Limpa o form mantendo a data
+
+    setFormData({
+
+      date: formData.date,
+
+      quantity: '',
+
+      expenses: '',
+
+      paymentMethod: 'Dinheiro'
+
+    });
+
+  };
+
+
+
+  const handleDelete = (id) => {
+
+    setSales(sales.filter(sale => sale.id !== id));
+
+  };
+
+
+
+  const exportToCSV = () => {
+
+    // Cabeçalho do CSV
+
+    let csvContent = "data:text/csv;charset=utf-8,";
+
+    csvContent += "Data,Mes,Qtd Pizzas,Meta Diaria,Preco Unitario,Faturamento,Despesas,Lucro Liquido,Pagamento,Meta Atingida\n";
+
+
+
+    // Linhas
+
+    sales.forEach(row => {
+
+      const rowData = [
+
+        row.date,
+
+        row.month,
+
+        row.quantity,
+
+        DAILY_GOAL,
+
+        `R$ ${PIZZA_PRICE.toFixed(2)}`,
+
+        `R$ ${row.revenue.toFixed(2)}`,
+
+        `R$ ${row.expenses.toFixed(2)}`,
+
+        `R$ ${row.profit.toFixed(2)}`,
+
+        row.paymentMethod,
+
+        row.goalMet ? "SIM" : "NAO"
+
+      ];
+
+      csvContent += rowData.join(",") + "\n";
+
+    });
+
+
+
+    const encodedUri = encodeURI(csvContent);
+
+    const link = document.createElement("a");
+
+    link.setAttribute("href", encodedUri);
+
+    link.setAttribute("download", "controle_pizzas.csv");
+
+    document.body.appendChild(link);
+
+    link.click();
+
+    document.body.removeChild(link);
+
+  };
+
+
+
+  // Cálculos gerais
+
+  const totalRevenue = sales.reduce((acc, curr) => acc + curr.revenue, 0);
+
+  const totalProfit = sales.reduce((acc, curr) => acc + curr.profit, 0);
+
+  const totalPizzas = sales.reduce((acc, curr) => acc + curr.quantity, 0);
+
+
+
+  return (
+
+    <div className="min-h-screen bg-slate-50 p-4 md:p-8 font-sans text-slate-900">
+
+      <div className="max-w-5xl mx-auto space-y-6">
+
+       
+
+        {/* Header e Botão de Exportar */}
+
+        <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+
+          <div>
+
+            <h1 className="text-3xl font-bold text-orange-600 flex items-center gap-2">
+
+              <Pizza className="h-8 w-8" /> Controle de Pizzas
+
+            </h1>
+
+            <p className="text-slate-600">Meta diária: 3 pizzas | Preço: R$ 25,00</p>
+
+          </div>
+
+          <button
+
+            onClick={exportToCSV}
+
+            className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition-colors shadow-sm"
+
+          >
+
+            <Download size={18} />
+
+            Baixar Planilha (.csv)
+
+          </button>
+
+        </div>
+
+
+
+        {/* Cards de Resumo */}
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+
+          <Card className="border-l-4 border-l-blue-500 shadow-sm">
+
+            <CardContent className="pt-6">
+
+              <div className="flex justify-between items-center">
+
+                <div>
+
+                  <p className="text-sm text-slate-500 font-medium">Faturamento Total</p>
+
+                  <h3 className="text-2xl font-bold text-slate-800">R$ {totalRevenue.toFixed(2)}</h3>
+
+                </div>
+
+                <DollarSign className="text-blue-500 h-8 w-8 opacity-20" />
+
+              </div>
+
+            </CardContent>
+
+          </Card>
+
+          <Card className="border-l-4 border-l-green-500 shadow-sm">
+
+            <CardContent className="pt-6">
+
+              <div className="flex justify-between items-center">
+
+                <div>
+
+                  <p className="text-sm text-slate-500 font-medium">Lucro Líquido</p>
+
+                  <h3 className="text-2xl font-bold text-green-600">R$ {totalProfit.toFixed(2)}</h3>
+
+                </div>
+
+                <TrendingUp className="text-green-500 h-8 w-8 opacity-20" />
+
+              </div>
+
+            </CardContent>
+
+          </Card>
+
+          <Card className="border-l-4 border-l-orange-500 shadow-sm">
+
+            <CardContent className="pt-6">
+
+              <div className="flex justify-between items-center">
+
+                <div>
+
+                  <p className="text-sm text-slate-500 font-medium">Pizzas Vendidas</p>
+
+                  <h3 className="text-2xl font-bold text-orange-600">{totalPizzas}</h3>
+
+                </div>
+
+                <Pizza className="text-orange-500 h-8 w-8 opacity-20" />
+
+              </div>
+
+            </CardContent>
+
+          </Card>
+
+        </div>
+
+
+
+        {/* Formulário de Entrada */}
+
+        <Card className="shadow-sm border-slate-200">
+
+          <CardHeader className="pb-2">
+
+            <CardTitle className="text-lg flex items-center gap-2">
+
+              <PlusCircle size={20} className="text-orange-500"/> Novo Lançamento
+
+            </CardTitle>
+
+          </CardHeader>
+
+          <CardContent>
+
+            <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
+
+              <div className="md:col-span-1">
+
+                <label className="block text-sm font-medium text-slate-700 mb-1">Data</label>
+
+                <input
+
+                  type="date"
+
+                  name="date"
+
+                  required
+
+                  value={formData.date}
+
+                  onChange={handleInputChange}
+
+                  className="w-full p-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-orange-500 outline-none"
+
+                />
+
+              </div>
+
+              <div className="md:col-span-1">
+
+                <label className="block text-sm font-medium text-slate-700 mb-1">Qtd. Pizzas</label>
+
+                <input
+
+                  type="number"
+
+                  name="quantity"
+
+                  min="0"
+
+                  placeholder="0"
+
+                  required
+
+                  value={formData.quantity}
+
+                  onChange={handleInputChange}
+
+                  className="w-full p-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-orange-500 outline-none"
+
+                />
+
+              </div>
+
+              <div className="md:col-span-1">
+
+                <label className="block text-sm font-medium text-slate-700 mb-1">Despesas (R$)</label>
+
+                <input
+
+                  type="number"
+
+                  name="expenses"
+
+                  min="0"
+
+                  step="0.01"
+
+                  placeholder="0,00"
+
+                  value={formData.expenses}
+
+                  onChange={handleInputChange}
+
+                  className="w-full p-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-orange-500 outline-none"
+
+                />
+
+              </div>
+
+              <div className="md:col-span-1">
+
+                <label className="block text-sm font-medium text-slate-700 mb-1">Pagamento</label>
+
+                <select
+
+                  name="paymentMethod"
+
+                  value={formData.paymentMethod}
+
+                  onChange={handleInputChange}
+
+                  className="w-full p-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-orange-500 outline-none bg-white"
+
+                >
+
+                  <option value="Dinheiro">Dinheiro</option>
+
+                  <option value="PIX">PIX</option>
+
+                  <option value="Cartão Crédito">Cartão Crédito</option>
+
+                  <option value="Cartão Débito">Cartão Débito</option>
+
+                </select>
+
+              </div>
+
+              <div className="md:col-span-1">
+
+                <button
+
+                  type="submit"
+
+                  className="w-full bg-orange-600 hover:bg-orange-700 text-white p-2 rounded-md font-medium transition-colors"
+
+                >
+
+                  Adicionar
+
+                </button>
+
+              </div>
+
+            </form>
+
+          </CardContent>
+
+        </Card>
+
+
+
+        {/* Tabela de Dados */}
+
+        <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
+
+          <div className="overflow-x-auto">
+
+            <table className="w-full text-sm text-left">
+
+              <thead className="bg-slate-100 text-slate-600 uppercase text-xs font-semibold">
+
+                <tr>
+
+                  <th className="px-6 py-3">Data</th>
+
+                  <th className="px-6 py-3">Mês</th>
+
+                  <th className="px-6 py-3 text-center">Qtd (Meta: 3)</th>
+
+                  <th className="px-6 py-3">Faturamento</th>
+
+                  <th className="px-6 py-3">Despesas</th>
+
+                  <th className="px-6 py-3">Lucro</th>
+
+                  <th className="px-6 py-3">Pagamento</th>
+
+                  <th className="px-6 py-3 text-center">Ação</th>
+
+                </tr>
+
+              </thead>
+
+              <tbody className="divide-y divide-slate-100">
+
+                {sales.length === 0 ? (
+
+                  <tr>
+
+                    <td colSpan="8" className="px-6 py-8 text-center text-slate-400 italic">
+
+                      Nenhuma venda registrada ainda.
+
+                    </td>
+
+                  </tr>
+
+                ) : (
+
+                  sales.map((sale) => (
+
+                    <tr key={sale.id} className="hover:bg-slate-50 transition-colors">
+
+                      <td className="px-6 py-4 font-medium text-slate-800">
+
+                        {new Date(sale.date).toLocaleDateString('pt-BR')}
+
+                      </td>
+
+                      <td className="px-6 py-4 capitalize text-slate-600">{sale.month}</td>
+
+                      <td className="px-6 py-4 text-center">
+
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+
+                          sale.goalMet ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+
+                        }`}>
+
+                          {sale.quantity}
+
+                        </span>
+
+                      </td>
+
+                      <td className="px-6 py-4 text-slate-600">R$ {sale.revenue.toFixed(2)}</td>
+
+                      <td className="px-6 py-4 text-red-500">- R$ {sale.expenses.toFixed(2)}</td>
+
+                      <td className="px-6 py-4 font-bold text-green-600">R$ {sale.profit.toFixed(2)}</td>
+
+                      <td className="px-6 py-4 text-slate-600">{sale.paymentMethod}</td>
+
+                      <td className="px-6 py-4 text-center">
+
+                        <button
+
+                          onClick={() => handleDelete(sale.id)}
+
+                          className="text-slate-400 hover:text-red-500 transition-colors"
+
+                        >
+
+                          <Trash2 size={18} />
+
+                        </button>
+
+                      </td>
+
+                    </tr>
+
+                  ))
+
+                )}
+
+              </tbody>
+
+            </table>
+
+          </div>
+
+        </div>
+
+      </div>
+
+    </div>
+
+  );
+
+};
+
+
+
+export default App;
